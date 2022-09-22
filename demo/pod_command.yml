@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: command
+  name: nginxcommand
+spec:
+  containers:
+    - name: container-command
+      image: nginx:alpine
+      imagePullPolicy: IfNotPresent
+      ports:
+      -  containerPort: 80
+      resources:
+        limits:
+          cpu: 100m
+          memory: 200Mi
+        requests:
+          cpu: 100m
+          memory: 200Mi
+      command: # Startup command
+      - top
+      - "-b"

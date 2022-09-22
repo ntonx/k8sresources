@@ -1,0 +1,146 @@
+
+kubectl create -f pod_liveness.yaml
+# See number of restarts and limit resources stablish on yaml 
+kubectl describe pod/nginx
+
+kubectl expose pod/nginx --type=NodePort
+kubectl get svc
+# go to explorer and to localhost:port
+
+kubectl create -f pod_command.yaml
+# describe the command label on yaml file
+kubectl logs pod/nginxcommand
+
+kubectl create -f pod_command.yaml
+
+#####################################
+----------- See the resources management -----------
+# Create metrics server, execute
+kubectl create -f metricsserver.yaml
+# Describe content of next file, namespaces and sources fields
+
+kubectl create pod -f pod_resourceslimit.yml
+
+kubectl top pod memory-demo --namespace=k8s
+kubectl delete -f pod_resourceslimit.yml
+
+kubectl create pod -f pod_resourceslimitexced.yml
+kubectl get all --namespace=k8s
+kubectl get pod memory-demo-2 --namespace=k8s
+kubectl top pod memory-demo-2 --namespace=k8s
+kubectl get pod memory-demo-2 --output=yaml --namespace=k8s
+# check containerStatuses > lastState > reason
+kubectl describe pod memory-demo-2 -n k8s
+
+
+# execute the pod that exceeds resources of the cluster nodes
+kubectl create -f pod_resourceslimitexcedonallnodes.yml
+kubectl get po -n k8s
+kubectl describe pod memory-demo-3 -n k8s
+# see resources stablished on every node and namespace
+kubectl describe nodes
+kubectl delete pod memory-demo-3 --namespace=k8s
+kubectl delete -f pod_resourceslimitexced.yml
+kubectl delete -f metricsserver.yaml
+
+
+
+#####################################
+-------------PRODUCT PAGE SERVICE--------------------
+
+kubectl create -f pod_productpage.yaml
+kubectl expose pod/productpage --type=NodePort
+# go to explorer http://localhost:port
+
+
+#####################################
+----------------------REVIEWS SERVICE--------------------
+kubectl create -f por_reviews.yaml
+kubectl expose pod/reviews
+kubectl get svc
+# see difference between NodePort and ClusterIP
+# copy the IP and port :9080
+# go to product page environment
+
+
+10.110.247.185:9080
+kubectl exec -it pod/productpage -- bash
+# apt get update -y
+# apt-get install nano -y
+# edit the productpage.py file in the section reviews={"name":"http://IP:port",}
+# see logs from productpage pod
+kubectl logs pod productpage
+# see that reviews service sends a 200 response, while details service sends a 400 response
+
+
+#####################################
+-------------DETAIL SERVICE--------------------
+#deploy details service
+kubectl create -f pod_detail.yaml
+kubectl expose pod/detail
+kubectl get svc
+# copy IP:port and paste on productpage file, on details dictionary     details ={ "name": "http://10.111.89.191:9080" , }
+
+# see the logs from pod/productpage, now details & reviews services are linked
+kubectl logs pod/productpage
+
+
+#####################################
+-------------RATINGS SERVICE--------------------
+#####this part does not show response cause review service consume ratings service inside, so modify war file is not possible
+#Create, expose and define ratings service
+kubectl create -f pod_ratings.yaml
+kubectl expose pod/ratings
+kubectl get svc
+# copy IP:port and paste on productpage file, on rating dictionary rating= {"name": "http://10.100.165.231:9080", }
+# but if we navigate to http://localhost:<productpagePort>/api/v1/products/0/ratings , we receive a successful response from ratings service
+kubectl logs pod/productpage
+
+
+
+##########################################################################
+##########################################################################
+##########################################################################
+-----------OTHERS COMMANDS---------------------
+kubectl scale deployment name-deployment --replicas=2
+
+
+
+#####################################################
+---------- Ingress for bookinfo sample  -----------------------------------------------
+[when the allinone.yaml or bookinfo.yaml is deployed]
+-----------------------------------------------------------------------------------------------
+
+#Execute on distribuited cluster
+kubectl create -f allinone.yaml
+kubectl get pod
+kubectl apply -f samples/bookinfo/networking/bookinfo-gateway.yaml
+kubectl get gateway
+kubectl get svc istio-ingressgateway -n istio-system
+#### the result is that External IP "is pending"
+export INGRESS_PORT=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
+export SECURE_INGRESS_PORT=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="https")].nodePort}')
+export TCP_INGRESS_PORT=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="tcp")].nodePort}')
+export INGRESS_HOST=$(kubectl get po -l istio=ingressgateway -n istio-system -o jsonpath='{.items[0].status.hostIP}')
+export GATEWAY_URL=$INGRESS_HOST:$INGRESS_PORT
+curl -s "http://${GATEWAY_URL}/productpage" | grep -o "<title>.*</title>"
+
+
+
+#####################################################
+---------- Define a namespace to deploy an app in an specific environment
+------------------------------------------------------------------------------------------------
+kubectl get all -n default
+kubectl get namespaces   / kubectl get ns
+kubectl create namespace k8s
+kubectl config get-contexts
+# Stablish a namespace to deploy objects
+kubectl config set-context --current --namespace=<insert-namespace-name-here>
+# Validate it
+kubectl config view | grep namespace:
+
+# Check what sources are in a namespace
+# In a namespace
+kubectl api-resources --namespaced=true
+# Not in a namespace
+kubectl api-resources --namespaced=false

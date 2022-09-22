@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: ratings
+  name: ratings
+spec:
+  containers:
+    - name: ratings-javascript
+      image: docker.io/istio/examples-bookinfo-ratings-v1:1.16.4
+      imagePullPolicy: IfNotPresent
+      ports:
+      - containerPort: 9080
+      securityContext:
+        runAsUser: 1000

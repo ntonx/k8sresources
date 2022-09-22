@@ -1,0 +1,273 @@
+		ON MASTER:
+##########################################
+##########################################
+SO: Centos 7
+# sudo swapoff -a
+# sudo setenforce 0
+# sudo sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
+# sudo firewall-cmd --permanent --add-port=6443/tcp
+# sudo firewall-cmd --permanent --add-port=2379-2380/tcp
+# sudo firewall-cmd --permanent --add-port=10250/tcp
+# sudo firewall-cmd --permanent --add-port=10251/tcp
+# sudo firewall-cmd --permanent --add-port=10252/tcp
+# sudo firewall-cmd --permanent --add-port=10255/tcp
+--------- I added this two lines -----------
+# sudo firewall-cmd --add-port=8472/udp --permanent
+# sudo firewall-cmd --add-port=8090/tcp --permanent
+# sudo systemctl restart firewalld
+---------------------------------------------------
+# sudo firewall-cmd --reload
+# sudo modprobe br_netfilter
+# echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+	or we can do:
+	# sudo nano /proc/sys/net/bridge/bridge-nf-call-iptables
+		Write 1 on this file > SAVE > CLOSE
+
+# cd /etc/yum.repos.d/
+# sudo nano kubernetes.repo
+	Write this on the file:
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+
+# sudo yum install -y kubelet-1.23.4 kubectl-1.23.4 kubeadm-1.23.4 docker
+##################################################
+#----------	Create a daemon.json file for deploy kubelet -----------------
+
+# cd /etc/docker/
+# sudo nano daemon.json
+	Write this on the file:
+
+{
+    "exec-opts": ["native.cgroupdriver=systemd"]
+}
+
+# sudo systemctl daemon-reload
+# sudo systemctl restart docker
+# sudo systemctl restart kubelet       
+# sudo systemctl enable kubelet
+# sudo systemctl start kubelet
+# sudo systemctl enable docker
+# sudo systemctl start docker
+
+# sudo swapoff -a
+# sudo kubeadm init
+
+#####################################################
+Outputs: kubeadm join <IP_MASTER_NODE>:6443 --token <TOKEN> ................ SAVE THIS VALUES
+
+########Continue with installation
+# export KUBECONFIG=/etc/kubernetes/admin.conf    >>>>>> I DON'T EXECUTE THIS
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+export KUBECONFIG=$HOME/.kube/config
+kubectl get nodes
+
+# export kubever=$(kubectl version | base64 | tr -d '\n')
+# kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$kubever"
+# kubectl get nodes
+
+
+
+
+
+
+######################################################
+#		ON WORKERS NODES:			       #
+######################################################
+
+# sudo setenforce 0
+# sudo sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
+# sudo firewall-cmd --permanent --add-port=6783/tcp
+# sudo firewall-cmd --permanent --add-port=10250/tcp
+# sudo firewall-cmd --permanent --add-port=10255/tcp
+# sudo firewall-cmd --permanent --add-port=30000-32767/tcp
+-----------added to allow connection-------------
+# sudo firewall-cmd --add-port=8090/tcp --permanent
+# sudo firewall-cmd --add-port=8472/udp --permanent
+# sudo systemctl restart firewalld
+----------------------------------------------------------
+
+# sudo firewall-cmd  --reload
+# echo '1' > /proc/sys/net/bridge/bridge-nf-call-iptables
+
+# cd /etc/yum.repos.d/
+# sudo nano kubernetes.repo
+	Write this on the file:
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+
+# sudo yum install -y kubeadm-1.23.4 docker
+################################################
+------------	Create a daemon.json file for deploy kubelet----------------
+
+# cd /etc/docker/
+..............write firstly exec-opt as first option
+# sudo nano daemon.json  
+# IMPORTANT : on workers nodes, and maybe depends on docker version I used "exec-opt", but in master I used "exec-opts"
+	Write this on the file:
+
+{
+    "exec-opts": ["native.cgroupdriver=systemd"]
+}
+
+# sudo systemctl daemon-reload
+# sudo systemctl restart docker
+	If this command fails eddit daemon.json on "exec-opts" to "exec-opt" 
+# sudo systemctl restart kubelet        >>>>>>>>>>>>>>>>>NOT USED
+
+# sudo systemctl enable kubelet
+# sudo systemctl start kubelet
+# sudo systemctl enable docker
+# sudo systemctl start docker
+# sudo swapoff -a
+# sudo kubeadm join <IP_MASTER-NODE>:6443 --token <TOKEN>
+
+
+
+
+
+#####################################################
+#---------------------------INSTALL THE DASHBOARD COMPONENT:-----------
+#####################################################
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/deploy/recommended.yaml
+kubectl get svc -n kubernetes-dashboard
+kubectl --namespace kubernetes-dashboard patch svc kubernetes-dashboard -p '{"spec": {"type": "NodePort"}}'
+Write this on one file > vim nodeport_dashboard_patch.yaml
+
+spec:
+  ports:
+  - nodePort: 32000
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+
+
+kubernetes-dashboard --patch "$(cat nodeport_dashboard_patch.yaml)"
+kubectl get deployments -n kubernetes-dashboard
+kubectl get pods -n kubernetes-dashboard
+
+
+ON MASTER NODE EXECUTE: (to get the token neccesary for access to k8s dashboard UI) 
+------->
+	### kubectl -n kube-system describe secret default -----this command show one token but it is not the used to deploy on console
+	kubectl -n kube-system describe secret
+Copy the token (the last token shown in the console is the one that correspond to the user who create on console, so you have to use the last one command)
+------->
+Get the port where Dashboard is deployed (select NodePort that specify, the second values 443:32000; in this case 32000)
+	kubectl get service -n kubernetes-dashboard 
+------->
+On master describe nodes:
+	Kubectl get nodes
+------->
+Select one IP from any node and go to explorer:
+	http://IP_node:32000
+------->
+Choose token access & paste the token 
+------->
+
+You can choose the config file but you need to add a line in the bottom part with token: value as in the example config file
+
+
+####################################################
+Instructions were taking from:
+	https://www.tecmint.com/install-kubernetes-cluster-on-centos-7/
+####################################################
+
+
+
+
+
+######################################################	
+#----------------------ADD NEW WORKERS IF WE DON'T HAVE TOKEN ----------
+######################################################
+Go to MASTER NODE and execute
+#	sudo kubeadm token generate
+Copy the token and execute:
+# 	sudo kubeadm token create <HERE THE TOKEN> --print-join-command
+Copy the kubeadm join command
+
+Go to the new WORKER NODE
+Execute all the previous steps (modify firewall permissions, install kubeadm, etc.. check previous section)
+Execute the kubeadm join command
+# sudo kubeadm join <IP_MASTER_NODE>:6443 --token <TOKEN>
+
+		¡IMPORTANT INFORMATION !
+If there is a error cause Docker was already installed (see requirements step to do on worker node ->> sudo yum install kubeadm docker -y  ......... not install docker again, remove docker from instruction)
+then we can do the next:
+	Execute on WORKER NODE:
+		sudo rm /etc/containerd/config.toml
+		sudo systemctl restart containerd
+	Then continue with 
+		sudo kubeadm join <token>
+
+Go to MASTER NODE and execute
+# kubectl get nodes
+Wait until STATUS get READY
+
+####################################################
+# --------------------IMPORTANT -------------------------------------------------------
+####################################################
+If nodes can't reach other nodes verify masquade parameter on firewall (on the node unreachable)
+sudo firewall-cmd --list-all
+sudo firewall-cmd --zone=public --add-masquerade --permanent
+sudo firewall-cmd --reload
+sudo service docker restart
+
+
+
+
+
+#####################################################
+# ................   KUBELET HAS ALREADY INSTALL AND RUNNING ON NODE : ERROR INSTALATION
+#####################################################
+****** If kubeadm init is not working, probably this command are useful
+# sudo rm /etc/containerd/config.toml
+# sudo systemctl restart containerd
+# sudo kubeadm init
+
+****** If not, delete all kubeadm, kubelet, docker
+
+
+
+
+
+######################################################
+#		DELETE WORKER NODES FROM MASTER:			       #
+######################################################
+------ Go to master an execute:
+# kubectl get nodes
+# kubectl drain <node-name>
+
+You might have to ignore daemonsets and local-data in the machine
+# kubectl drain <node-name> --ignore-daemonsets --delete-local-data
+# kubectl delete node <node-name>
+
+------ Go to workerr an execute:
+# kubeadm reset
+
+
+
+
+
+######################################################
+#..........INSTALL THE CORRECCT K8S VERSION .........................................#
+######################################################
+
+If kubelev command get error when execute kubectl version "incomplete command" you have to choose another k8s version
+
+# sudo yum remove kubelet kubeadm kubectl
+# sudo yum install -y kubelet-1.23.4 kubectl-1.23.4 kubeadm-1.23.4 docker --disableexcludes=kubernetes
+
+kubernetes-cni 0.8.7-0

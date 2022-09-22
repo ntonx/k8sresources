@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: liveness
+  name: nginx
+spec:
+  containers:
+    - name: container-0
+      image: nginx:alpine
+      imagePullPolicy: IfNotPresent
+      ports:
+      -  containerPort: 80
+      resources:
+        limits:
+          cpu: 100m
+          memory: 200Mi
+        requests:
+          cpu: 100m
+          memory: 200Mi
+      livenessProbe: # liveness probe
+        httpGet: #HTTP GET definition
+          path: /
+          port: 80
+      #command: # Startup command
+      #- top
+      #- "-b"
+
+
+
+
