@@ -51,3 +51,12 @@
 	kubectl delete -f https://raw.githubusercontent.com/ntonx/k8sresources/master/demo/guestbook/4_redis-follower-service.yaml
 	kubectl delete -f https://raw.githubusercontent.com/ntonx/k8sresources/master/demo/guestbook/5_frontend-deployment.yaml
 	kubectl delete -f https://raw.githubusercontent.com/ntonx/k8sresources/master/demo/guestbook/6_frontend-service.yaml
+
+
+### CREATE K8s OBJECTS (all objects declared in one file)
+
+	kubectl apply -f https://raw.githubusercontent.com/ntonx/k8sresources/master/demo/guestbook/allinone.yaml
+
+### DELETE K8s OBJECTS (all objects declared in one file)
+
+	kubectl delete -f https://raw.githubusercontent.com/ntonx/k8sresources/master/demo/guestbook/allinone.yaml
