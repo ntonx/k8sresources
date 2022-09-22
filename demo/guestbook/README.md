@@ -1,7 +1,7 @@
 
 ### CREATE K8s OBJECTS      
 
-	kubectl apply -f https://raw.githubusercontent.com/ntonx/k8sresources/master/demo/guestbook/1_redis-leader-deployment.yaml\
+	kubectl apply -f https://raw.githubusercontent.com/ntonx/k8sresources/master/demo/guestbook/1_redis-leader-deployment.yaml
 	
 	kubectl apply -f https://raw.githubusercontent.com/ntonx/k8sresources/master/demo/guestbook/2_redis-leader-service.yaml
 	
